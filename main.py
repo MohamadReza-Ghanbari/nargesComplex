@@ -20,7 +20,6 @@ def run_web():
 
 # --- تنظیمات ربات بله ---
 TOKEN = "1369540100:-7y88H-OWPGtk6aigvZR-A1j3p9uroZzd7k"
-month = "مهر"
 
 current_card = "5022291346694001"
 current_card_display = "5022-2913-4669-4001"
@@ -37,6 +36,17 @@ bot = telebot.TeleBot(TOKEN)
 def get_unit_data(unit_number):
     try:
         df = pd.read_excel("data.xlsx")
+
+        # خواندن ماه‌ها از سطر اول ستون‌های مربوطه
+        month_current = "—"
+        month_civil = "—"
+        if "monthCurrent" in df.columns and pd.notna(
+            df["monthCurrent"].iloc[0]
+        ):
+            month_current = str(df["monthCurrent"].iloc[0]).strip()
+        if "monthCivil" in df.columns and pd.notna(df["monthCivil"].iloc[0]):
+            month_civil = str(df["monthCivil"].iloc[0]).strip()
+
         unit_data = df[df["Unit"] == int(unit_number)]
 
         if not unit_data.empty:
@@ -44,6 +54,8 @@ def get_unit_data(unit_number):
                 "status": "ok",
                 "current": int(unit_data.iloc[0]["CurrentCharge"]),
                 "civil": int(unit_data.iloc[0]["CivilCharge"]),
+                "month_current": month_current,
+                "month_civil": month_civil,
             }
         else:
             return {"status": "not_found"}
@@ -70,54 +82,84 @@ def handle_message(message):
         data = get_unit_data(user_input)
 
         if data["status"] == "ok":
+            current_val = data["current"]
+            civil_val = data["civil"]
+            m_current = data["month_current"]
+            m_civil = data["month_civil"]
+
+            # تعیین وضعیت متنی شارژ جاری
+            if current_val > 0:
+                current_text = f"🔹 **شارژ جاری:** {current_val:,} ریال\n💳 کارت جاری: `{current_card_display}`\n👤 به نام: {owner_current_card}"
+            elif current_val == 0:
+                current_text = "🔹 **شارژ جاری:** ۰ ریال (تسویه کامل ✅)"
+            else:
+                current_text = f"🔹 **شارژ جاری:** {abs(current_val):,} ریال (بستانکار 🟢)"
+
+            # تعیین وضعیت متنی شارژ عمرانی
+            if civil_val > 0:
+                civil_text = f"🔸 **شارژ عمرانی:** {civil_val:,} ریال\n💳 کارت عمرانی: `{civil_card_display}`\n👤 به نام: {owner_civil_card}"
+            elif civil_val == 0:
+                civil_text = "🔸 **شارژ عمرانی:** ۰ ریال (تسویه کامل ✅)"
+            else:
+                civil_text = f"🔸 **شارژ عمرانی:** {abs(civil_val):,} ریال (بستانکار 🟢)"
+
+            # متن اصلی پیام صورت‌حساب
             main_text = (
-                f"🏢 **صورت‌حساب واحد {user_input}**\n"
-                f"🗓 وضعیت تا پایان **{month} ماه**\n\n"
-                f"🔹 **شارژ جاری:** {data['current']:,} ریال\n"
-                f"💳 کارت جاری: `{current_card_display}`\n"
-                f"👤 به نام: {owner_current_card}\n\n"
-                f"🔸 **شارژ عمرانی:** {data['civil']:,} ریال\n"
-                f"💳 کارت عمرانی: `{civil_card_display}`\n"
-                f"👤 به نام: {owner_civil_card}\n\n"
-                f"━━━━━━━━━━━━━━━━━━\n"
-                f"جهت کپی راحت مبالغ و شماره کارت‌ها در پیام‌های مجزای زیر ارسال می‌شوند.\n"
-                f"━━━━━━━━━━━━━━━━━━\n"
-                f"📌 **راهنمای پرداخت سریع در بله:**\n"
-                f"ابتدا مبلغ را کپی نمایید، سپس با لمس شماره کارت مستقیماً وارد صفحه انتقال وجه شده و مبلغ را درج فرمایید."
+                f"🏢 **صورت‌حساب واحد {user_input}**\n\n"
+                f"🗓 وضعیت شارژ جاری تا پایان **{m_current} ماه**\n"
+                f"{current_text}\n\n"
+                f"🗓 وضعیت شارژ عمرانی تا پایان **{m_civil} ماه**\n"
+                f"{civil_text}\n"
             )
+
+            # اگر حداقل یکی از شارژها بدهکاری داشته باشد، بخش راهنمای کپی ارسال می‌شود
+            if current_val > 0 or civil_val > 0:
+                main_text += (
+                    f"━━━━━━━━━━━━━━━━━━\n"
+                    f"جهت کپی راحت مبالغ و شماره کارت‌ها در پیام‌های مجزای زیر ارسال می‌شوند.\n"
+                    f"━━━━━━━━━━━━━━━━━━\n"
+                    f"📌 **راهنمای پرداخت سریع در بله:**\n"
+                    f"ابتدا مبلغ را کپی نمایید، سپس با لمس شماره کارت مستقیماً وارد صفحه انتقال وجه شده و مبلغ را درج فرمایید."
+                )
+
             bot.reply_to(message, main_text, parse_mode="Markdown")
 
-            bot.send_message(
-                message.chat.id,
-                f"🔹 **مبلغ شارژ جاری واحد {user_input} (ریال):**",
-                parse_mode="Markdown",
-            )
-            bot.send_message(message.chat.id, str(data["current"]))
+            # ارسال پیام‌های کپی آسان برای شارژ جاری (صرفاً در صورت بدهکاری)
+            if current_val > 0:
+                bot.send_message(
+                    message.chat.id,
+                    f"🔹 **مبلغ شارژ جاری واحد {user_input} (ریال):**",
+                    parse_mode="Markdown",
+                )
+                bot.send_message(message.chat.id, str(current_val))
 
-            bot.send_message(
-                message.chat.id,
-                f"💳 **شماره کارت شارژ جاری**\n👤 {owner_current_card}:",
-                parse_mode="Markdown",
-            )
-            bot.send_message(message.chat.id, str(current_card))
+                bot.send_message(
+                    message.chat.id,
+                    f"💳 **شماره کارت شارژ جاری**\n👤 {owner_current_card}:",
+                    parse_mode="Markdown",
+                )
+                bot.send_message(message.chat.id, str(current_card))
 
-            bot.send_message(
-                message.chat.id,
-                f"🔸 **مبلغ شارژ عمرانی واحد {user_input} (ریال):**",
-                parse_mode="Markdown",
-            )
-            bot.send_message(message.chat.id, str(data["civil"]))
+            # ارسال پیام‌های کپی آسان برای شارژ عمرانی (صرفاً در صورت بدهکاری)
+            if civil_val > 0:
+                bot.send_message(
+                    message.chat.id,
+                    f"🔸 **مبلغ شارژ عمرانی واحد {user_input} (ریال):**",
+                    parse_mode="Markdown",
+                )
+                bot.send_message(message.chat.id, str(civil_val))
 
-            bot.send_message(
-                message.chat.id,
-                f"💳 **شماره کارت شارژ عمرانی**\n👤 {owner_civil_card}:",
-                parse_mode="Markdown",
-            )
-            bot.send_message(message.chat.id, str(civil_card))
+                bot.send_message(
+                    message.chat.id,
+                    f"💳 **شماره کارت شارژ عمرانی**\n👤 {owner_civil_card}:",
+                    parse_mode="Markdown",
+                )
+                bot.send_message(message.chat.id, str(civil_card))
 
+            # پیام پایانی راهنما
             bot.send_message(
                 message.chat.id,
-                f"━━━━━━━━━━━━━━━━━━\nلطفاً شماره واحد خود را ارسال نمایید.",
+                f"━━━━━━━━━━━━━━━━━━\nجهت استعلام مجدد، لطفاً شماره واحد خود را ارسال فرمایید.",
             )
 
         elif data["status"] == "not_found":
@@ -140,7 +182,6 @@ def handle_message(message):
 
 
 if __name__ == "__main__":
-    # اجرای وب‌سرور در پس‌زمینه
     t = Thread(target=run_web)
     t.daemon = True
     t.start()
