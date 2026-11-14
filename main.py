@@ -23,9 +23,9 @@ def run_web():
 TOKEN = "1369540100:-7y88H-OWPGtk6aigvZR-A1j3p9uroZzd7k"
 
 current_card = "5022291346694001"
-current_card_display = "5022-2913-4669-4001"
+current_card_display = "5022 2913 4669 4001"
 civil_card = "6037998184734357"
-civil_card_display = "6037-9981-8473-4357"
+civil_card_display = "6037 9981 8473 4357"
 
 owner_current_card = "آقایان جواد رضائی و حمید نامدار مطلق"
 owner_civil_card = "آقایان عباس محمدی و محمود سلطانشاهی سیرچی"
@@ -45,6 +45,11 @@ def copy_keyboard(rows):
         },
         ensure_ascii=False,
     )
+
+
+def ltr(text):
+    # U+2066 LEFT-TO-RIGHT ISOLATE … U+2069 POP DIRECTIONAL ISOLATE
+    return "\u2066" + text + "\u2069"
 
 
 def get_unit_data(unit_number):
@@ -121,7 +126,7 @@ def handle_message(message):
     if current_val > 0:
         current_text = (
             f"🔹 **شارژ جاری:** {current_val:,} ریال\n"
-            f"💳 کارت جاری: `{current_card_display}`\n"
+            f"💳 کارت جاری: `{current_card}`\n"
             f"👤 به نام: {owner_current_card}"
         )
     elif current_val == 0:
@@ -132,7 +137,7 @@ def handle_message(message):
     if civil_val > 0:
         civil_text = (
             f"🔸 **شارژ عمرانی:** {civil_val:,} ریال\n"
-            f"💳 کارت عمرانی: `{civil_card_display}`\n"
+            f"💳 کارت عمرانی: `{civil_card}`\n"
             f"👤 به نام: {owner_civil_card}"
         )
     elif civil_val == 0:
@@ -159,8 +164,10 @@ def handle_message(message):
     if copy_rows:
         main_text += (
             "\n\n━━━━━━━━━━━━━━━━━━\n"
-            "برای کپی، روی دکمه‌های شیشه‌ای زیر بزنید؛ مقدار مستقیم وارد کلیپ‌بورد می‌شود.\n"
-            "سپس شماره کارت را در انتقال وجه بچسبانید و مبلغ را درج کنید."
+            "برای کپی، روی دکمه‌های شیشه‌ای زیر بزنید؛ مقدار مستقیم کپی می‌شود.\n"
+            f"━━━━━━━━━━━━━━━━━━\n"
+            f"📌 **راهنمای پرداخت سریع در بله:**\n"
+            f"ابتدا مبلغ را کپی نمایید، سپس با لمس شماره کارت در بالا مستقیماً وارد صفحه انتقال وجه شده و مبلغ را درج فرمایید."
         )
 
     bot.reply_to(
@@ -172,7 +179,7 @@ def handle_message(message):
 
     bot.send_message(
         message.chat.id,
-        "━━━━━━━━━━━━━━━━━━\nجهت استعلام مجدد، لطفاً شماره واحد خود را ارسال فرمایید.",
+        "جهت استعلام مجدد، لطفاً شماره واحد خود را ارسال فرمایید.",
     )
 
 
