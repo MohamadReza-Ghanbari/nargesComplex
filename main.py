@@ -20,7 +20,7 @@ def run_web():
 
 
 # --- تنظیمات ربات بله ---
-TOKEN = "864106181:ZlvsEj7oFC9zHZhukvNTsvYDjxBHlZp_3hQ"
+TOKEN = "1369540100:-7y88H-OWPGtk6aigvZR-A1j3p9uroZzd7k"
 
 current_card = "5022291346694001"
 current_card_display = "5022-2913-4669-4001"
